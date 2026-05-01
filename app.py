@@ -47,6 +47,34 @@ model, scaler = load_model_and_scaler()
 df = load_dataset()
 
 
+@st.cache_data
+def get_personas_df():
+    if df is None:
+        return None
+    processed_df = df.copy()
+    # Encode Gender
+    processed_df['Gender_Male'] = (processed_df['Gender'] == 'Male').astype(int)
+    # Encode CampaignChannel
+    channels = ['PPC', 'Referral', 'SEO', 'Social Media']
+    for channel in channels:
+        processed_df[f'CampaignChannel_{channel}'] = (processed_df['CampaignChannel'] == channel).astype(int)
+    # Drop original
+    processed_df.drop(['Gender', 'CampaignChannel'], axis=1, inplace=True)
+    # Select features
+    input_features = processed_df[FEATURE_COLUMNS]
+    # Scale
+    input_scaled = scaler.transform(input_features)
+    # Predict
+    probs = model.predict_proba(input_scaled)[:, 1]
+    # Personas
+    personas = [assign_persona(p) for p in probs]
+    # Add to original df
+    personas_df = df.copy()
+    personas_df['Conversion_Probability'] = probs
+    personas_df['Persona'] = personas
+    return personas_df
+
+
 def assign_persona(probability: float) -> str:
     if probability >= 0.70:
         return "High Intent"
@@ -168,8 +196,8 @@ else:
 
 st.divider()
 
-tab1, tab2, tab3, tab4 = st.tabs([
-    "Prediction Details", "Business Impact", "Feature Importance", "Dataset Overview"
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "Prediction Details", "Business Impact", "Feature Importance", "Dataset Overview", "User Personas"
 ])
 
 with tab1:
@@ -246,6 +274,22 @@ with tab4:
         st.bar_chart(conv_counts)
     else:
         st.info("Dataset file not found. The prediction app still works with the saved model and scaler.")
+
+with tab5:
+    st.subheader("User Personas Overview")
+    personas_df = get_personas_df()
+    if personas_df is not None:
+        high_intent = personas_df[personas_df['Persona'] == 'High Intent']
+        warm_prospect = personas_df[personas_df['Persona'] == 'Warm Prospect']
+        low_intent = personas_df[personas_df['Persona'] == 'Low Intent']
+        st.write("### High Intent Users")
+        st.dataframe(high_intent.head(50), use_container_width=True)
+        st.write("### Warm Prospect Users")
+        st.dataframe(warm_prospect.head(50), use_container_width=True)
+        st.write("### Low Intent Users")
+        st.dataframe(low_intent.head(50), use_container_width=True)
+    else:
+        st.info("Dataset not available.")
 
 st.divider()
 st.caption("Capstone Project: Digital Marketing Campaign Conversion Prediction | Final Model: XGBoost")
