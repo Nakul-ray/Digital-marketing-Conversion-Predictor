@@ -137,30 +137,128 @@ st.caption("XGBoost-powered targeting, customer intent scoring, and budget alloc
 
 with st.sidebar:
     st.header("Customer Input")
-    st.write("Enter customer and campaign details below.")
+    st.write("Search by CustomerID or enter customer and campaign details below.")
 
-    gender = st.selectbox("Gender", ["Female", "Male"])
-    age = st.slider("Age", 18, 69, 35)
-    income = st.number_input("Income", min_value=0, max_value=200000, value=85000, step=1000)
+    customer_id_input = st.text_input("CustomerID", "", help="Type a CustomerID to load this customer's data")
+    selected_customer = None
+
+    if customer_id_input and df is not None:
+        lookup = customer_id_input.strip()
+        if lookup.isdigit():
+            lookup = int(lookup)
+            match = df[df["CustomerID"] == lookup]
+        else:
+            match = df[df["CustomerID"].astype(str) == lookup]
+
+        if not match.empty:
+            selected_customer = match.iloc[0]
+            st.success(f"Loaded CustomerID {selected_customer['CustomerID']}")
+            st.dataframe(match.drop(columns=["CustomerID"]).reset_index(drop=True), use_container_width=True)
+        else:
+            st.warning("CustomerID not found in the dataset.")
+
+    gender_options = ["Female", "Male"]
+    campaign_options = ["Email", "PPC", "Referral", "SEO", "Social Media"]
+
+    gender = st.selectbox(
+        "Gender",
+        gender_options,
+        index=0 if selected_customer is None else gender_options.index(selected_customer["Gender"]) if selected_customer["Gender"] in gender_options else 0
+    )
+    age = st.slider(
+        "Age",
+        18,
+        69,
+        int(selected_customer["Age"] if selected_customer is not None else 35)
+    )
+    income = st.number_input(
+        "Income",
+        min_value=0,
+        max_value=200000,
+        value=int(selected_customer["Income"] if selected_customer is not None else 85000),
+        step=1000,
+    )
 
     campaign_channel = st.selectbox(
         "Campaign Channel",
-        ["Email", "PPC", "Referral", "SEO", "Social Media"]
+        campaign_options,
+        index=0 if selected_customer is None else campaign_options.index(selected_customer["CampaignChannel"]) if selected_customer["CampaignChannel"] in campaign_options else 0
     )
 
-    ad_spend = st.number_input("Ad Spend", min_value=0.0, max_value=20000.0, value=5000.0, step=100.0)
-    click_through_rate = st.slider("Click Through Rate", 0.00, 0.50, 0.15, 0.01)
-    conversion_rate = st.slider("Historical Conversion Rate", 0.00, 0.30, 0.10, 0.01)
+    ad_spend = st.number_input(
+        "Ad Spend",
+        min_value=0.0,
+        max_value=20000.0,
+        value=float(selected_customer["AdSpend"] if selected_customer is not None else 5000.0),
+        step=100.0,
+    )
+    click_through_rate = st.slider(
+        "Click Through Rate",
+        0.00,
+        0.50,
+        float(selected_customer["ClickThroughRate"] if selected_customer is not None else 0.15),
+        0.01,
+    )
+    conversion_rate = st.slider(
+        "Historical Conversion Rate",
+        0.00,
+        0.30,
+        float(selected_customer["ConversionRate"] if selected_customer is not None else 0.10),
+        0.01,
+    )
 
-    website_visits = st.slider("Website Visits", 0, 100, 25)
-    pages_per_visit = st.slider("Pages Per Visit", 0.0, 15.0, 5.5, 0.1)
-    time_on_site = st.slider("Time On Site", 0.0, 20.0, 7.5, 0.1)
+    website_visits = st.slider(
+        "Website Visits",
+        0,
+        100,
+        int(selected_customer["WebsiteVisits"] if selected_customer is not None else 25)
+    )
+    pages_per_visit = st.slider(
+        "Pages Per Visit",
+        0.0,
+        15.0,
+        float(selected_customer["PagesPerVisit"] if selected_customer is not None else 5.5),
+        0.1,
+    )
+    time_on_site = st.slider(
+        "Time On Site",
+        0.0,
+        20.0,
+        float(selected_customer["TimeOnSite"] if selected_customer is not None else 7.5),
+        0.1,
+    )
 
-    social_shares = st.slider("Social Shares", 0, 150, 50)
-    email_opens = st.slider("Email Opens", 0, 30, 9)
-    email_clicks = st.slider("Email Clicks", 0, 20, 4)
-    previous_purchases = st.slider("Previous Purchases", 0, 20, 4)
-    loyalty_points = st.number_input("Loyalty Points", min_value=0, max_value=10000, value=2500, step=100)
+    social_shares = st.slider(
+        "Social Shares",
+        0,
+        150,
+        int(selected_customer["SocialShares"] if selected_customer is not None else 50)
+    )
+    email_opens = st.slider(
+        "Email Opens",
+        0,
+        30,
+        int(selected_customer["EmailOpens"] if selected_customer is not None else 9)
+    )
+    email_clicks = st.slider(
+        "Email Clicks",
+        0,
+        20,
+        int(selected_customer["EmailClicks"] if selected_customer is not None else 4)
+    )
+    previous_purchases = st.slider(
+        "Previous Purchases",
+        0,
+        20,
+        int(selected_customer["PreviousPurchases"] if selected_customer is not None else 4)
+    )
+    loyalty_points = st.number_input(
+        "Loyalty Points",
+        min_value=0,
+        max_value=10000,
+        value=int(selected_customer["LoyaltyPoints"] if selected_customer is not None else 2500),
+        step=100,
+    )
 
 values = {
     "Age": age,
